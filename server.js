@@ -17,15 +17,17 @@ app.use(express.static('public'));
 let waitingUsers = [];
 let totalOnlineCount = 0;
 
-const botNames = ["Priya", "Anjali", "Sneha", "Riya", "Kriti", "Simran", "Tanya", "Neha", "Divya", "Palak", "ragni", "Noor", "Alka", "Jannat", "Jainab"];
+const botNames = ["Priya", "Anjali", "Sneha", "Riya", "Kriti", "Simran", "Tanya", "Neha", "Divya", "Palak", "Alka", "Pooja", "Shreya"];
 const botLocations = ["Delhi", "Lucknow", "Mumbai", "Chandigarh", "Jaipur", "Pune", "Kolkata", "Indore", "Noida", "Patna"];
+
+// 👩 Only Girl Avatars (Pehle isme ladke ka icon mix ho gaya tha)
 const botAvatars = [
-    "https://cdn-icons-png.flaticon.com/512/6997/6997662.png",
-    "https://cdn-icons-png.flaticon.com/512/4140/4140047.png",
-    "https://cdn-icons-png.flaticon.com/512/4140/4140048.png"
+    "https://cdn-icons-png.flaticon.com/512/6997/6997662.png", // Female avatar 1
+    "https://cdn-icons-png.flaticon.com/512/4140/4140047.png", // Female avatar 2
+    "https://cdn-icons-png.flaticon.com/512/4140/4140048.png"  // Female avatar 3
 ];
 
-// Instargam par refuse karne ke liye random bahane
+// Instagram par refuse karne ke liye random bahane
 const instaExcuses = [
     "Nahi yaar, main strangers ko insta id nahi deti, bohot stalkers hote hain.",
     "Insta account temporary deactivated hai mera abhi, board/exams ki wajah se.",
@@ -47,7 +49,7 @@ io.on('connection', (socket) => {
         
         socket.isBotConnected = false;
         socket.chatHistory = [];
-        socket.isProcessing = false; // Duplicate messages ko rokne ke liye guard lock
+        socket.isProcessing = false; // Duplicate messages preventer lock
 
         socket.botName = botNames[Math.floor(Math.random() * botNames.length)];
         socket.botLocation = botLocations[Math.floor(Math.random() * botLocations.length)];
@@ -70,6 +72,7 @@ io.on('connection', (socket) => {
                     waitingUsers = waitingUsers.filter(user => user.id !== socket.id);
                     socket.isBotConnected = true;
                     
+                    // Direct proper girl avatar selection
                     const randomPic = botAvatars[Math.floor(Math.random() * botAvatars.length)];
 
                     socket.emit('match_found', {
@@ -79,16 +82,8 @@ io.on('connection', (socket) => {
                         gender: 'female'
                     });
 
-                    // 5 se 8 second ka natural delay pehle message ke liye bhi
-                    const botStartsFirst = Math.random() < 0.5;
-                    if (botStartsFirst) {
-                        const initialDelay = 5000 + Math.floor(Math.random() * 3000); 
-                        setTimeout(() => {
-                            if (socket.isBotConnected) {
-                                sendAiMessage(socket, "__START_CHAT__");
-                            }
-                        }, initialDelay);
-                    }
+                    // NOT sending any automatic initial message.
+                    // The bot will silently wait for the user to initiate the chat.
                 }
             }, 3000); 
         }
@@ -98,24 +93,23 @@ io.on('connection', (socket) => {
         if (socket.partner) {
             socket.partner.emit('receive_message', msg);
         } else if (socket.isBotConnected) {
-            // Guard: Agar pehle se reply process ho raha hai toh dubara event trigger na ho
             if (socket.isProcessing) return;
             socket.isProcessing = true;
 
-            // 5 se 8 second ka mast random gap delay (e.g. typing feels real)
-            const typingDelay = 5000 + Math.floor(Math.random() * 3000);
+            // Strict 6 seconds delay (6000ms)
+            const typingDelay = 6000; 
 
-            // Chat send karne ke thik 1 second baad 'typing' show karega
+            // Show typing after exactly 1 second of user sending message
             setTimeout(() => {
                 if (socket.isBotConnected) socket.emit('partner_typing', true);
             }, 1000);
             
-            // Poora delay khatam hone par message bhejega
+            // Send reply after exactly 6 seconds total has passed
             setTimeout(() => {
                 if (socket.isBotConnected) {
                     socket.emit('partner_typing', false);
                     sendAiMessage(socket, msg).then(() => {
-                        socket.isProcessing = false; // Lock release kiya
+                        socket.isProcessing = false; // Release lock
                     });
                 } else {
                     socket.isProcessing = false;
@@ -145,10 +139,9 @@ io.on('connection', (socket) => {
 async function sendAiMessage(socket, userText) {
     if (!socket.isBotConnected) return;
 
-    // Hardcoded logic: Agar user Instagram mangta hai toh seedha random bahana bhejein, API call waste na karein
+    // Direct Instagram check to save API and avoid failure loops
     const userLower = userText.toLowerCase();
     if (userLower.includes("insta") || userLower.includes("instagram") || userLower.includes("snap") || userLower.includes("id") || userLower.includes("number") || userLower.includes("no")) {
-        // Random excuse nikalna list se
         const randomExcuse = instaExcuses[Math.floor(Math.random() * instaExcuses.length)];
         
         socket.chatHistory.push({ role: 'user', parts: [{ text: userText }] });
@@ -165,25 +158,21 @@ async function sendAiMessage(socket, userText) {
     RULES YOU MUST FOLLOW:
     1. Reply ONLY in short, dynamic, natural Hindi or Hinglish (e.g., "Hey, kaise ho?", "Main badhiya, aap batao?", "Arey sahi me? Ekdam mast"). Do NOT use bookish or robotic Hindi. Talk exactly like a typical Indian girl on WhatsApp or Instagram DMs. Use occasional emojis.
     2. Keep your answers short (1 or 2 sentences max). Do not explain too much or write paragraphs.
-    3. MATCH THE CONTEXT: If the user says they are from your city or same location, act surprised and naturally ask where exactly or tell them you live in the main town area. Respond logically based on what they say. Do not repeat previous answers.
+    3. MATCH THE CONTEXT: If the user says they are from your city or same location, act surprised and naturally ask where exactly or tell them you live in the main town area. Respond logically based on what they say. Do not repeat previous answers. Do not say "network issue" unless the chat actually breaks.
     4. CLOSING LEAVE EXCUSE: After around 6 to 8 message exchanges, randomly bring up a believable excuse to drop out (e.g., phone switch off ho raha hai, mummy ka call aa raha hai, study karni hai) and say bye.
     `;
 
     try {
-        if (userText !== "__START_CHAT__") {
-            socket.chatHistory.push({ role: 'user', parts: [{ text: userText }] });
-        } else {
-            userText = "Initiate the chat with a short, friendly greeting in Hinglish like a regular Indian girl.";
-        }
+        socket.chatHistory.push({ role: 'user', parts: [{ text: userText }] });
 
-        // Chat history ko limits me rakhne ke liye taaki duplicate response ya overflow na ho
+        // Keep history in check to avoid repeating old context loops
         if (socket.chatHistory.length > 20) {
             socket.chatHistory = socket.chatHistory.slice(-10);
         }
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: socket.chatHistory.concat([{ role: 'user', parts: [{ text: userText }] }]),
+            contents: socket.chatHistory,
             config: {
                 systemInstruction: systemInstruction,
                 maxOutputTokens: 70,
@@ -193,7 +182,6 @@ async function sendAiMessage(socket, userText) {
 
         let aiReply = response.text.trim();
         
-        // Agar response empty ho ya automatic repeat lag raha ho, toh default fallback dynamic karenge
         if (!aiReply || aiReply === "") {
             aiReply = "Aur batao, kya chal raha?";
         }
@@ -212,13 +200,11 @@ async function sendAiMessage(socket, userText) {
 
     } catch (error) {
         console.error("Gemini Engine Error:", error);
-        
-        // Fallback responses array taaki har bar same error message repeat na ho
         const fallbackMessages = [
-            "Arey suno na, thoda network issue ho gaya hai shayad.",
-            "Hmm... achha aur batao?",
-            "Aapki awaz... sorry text late aa raha hai shayad.",
-            "Suno, tum kya karte ho waise?"
+            "Arey suno na, kya kar rahe ho waise?",
+            "Hmm... aur batao?",
+            "Net slow hai shayad mera.. haan batao?",
+            "Tum kya karte ho waise?"
         ];
         const randomFallback = fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
         socket.emit('receive_message', randomFallback);
