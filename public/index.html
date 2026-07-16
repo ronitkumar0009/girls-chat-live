@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NG4H7J8GTH"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-NG4H7J8GTH');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Online Chat With Girls - FREE & ANONYMOUS</title>
@@ -323,7 +331,6 @@
             document.getElementById('matchName').innerText = partnerData.name;
             document.getElementById('matchAge').innerText = "Age: " + partnerData.age;
             
-            // Clean Default Avatars (Yellow shirt/beard one has been removed completely)
             const defaultAvatar = partnerData.gender === 'female' 
                 ? 'https://cdn-icons-png.flaticon.com/512/6997/6997662.png' 
                 : 'https://cdn-icons-png.flaticon.com/512/147/147144.png'; 
@@ -332,7 +339,6 @@
             document.getElementById('chatHeaderTitle').innerText = `${partnerData.name} (${partnerData.age})`;
             document.getElementById('chatHeaderPic').src = partnerData.pic || defaultAvatar;
             
-            // Partner connected -> Online status reset to default green text
             chatHeaderStatus.innerText = "● Online";
             chatHeaderStatus.classList.remove('status-offline');
 
@@ -344,7 +350,6 @@
             }, 3000);
         });
 
-        // --- Typing Status Logic ---
         function handleTyping() {
             socket.emit('typing', true);
             clearTimeout(typingTimeout);
@@ -377,7 +382,6 @@
             box.scrollTop = box.scrollHeight;
         });
 
-        // --- Partner Offline / Left Logic ---
         socket.on('partner_disconnected', () => {
             chatHeaderStatus.innerText = "● Offline (Left Chat)";
             chatHeaderStatus.classList.add('status-offline');
@@ -394,7 +398,6 @@
             socket.emit('find_match', { myGender, targetGender: 'random', profileName, profileAge, profilePic: base64Image });
         }
 
-        // --- Exit Chat Feature ---
         function exitChat() {
             socket.emit('leave_chat');
             chatScreen.style.display = 'none';

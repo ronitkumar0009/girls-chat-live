@@ -29,6 +29,19 @@ const instaExcuses = [
     "Nahi abhi yahi baat karte hain na, insta thoda personal ho jata hai."
 ];
 
+// 🔥 RANDOM CHAT EXIT EXCUSES (Har baar bilkul random aur alag bahana aayega)
+const leaveExcuses = [
+    "Arey yaar, phone ki battery 2% hi bachi hai, switch off hone wala hai. Chalti hoon, bye! 🔋",
+    "Suno, mujhe abhi coaching/college ke liye nikalna hai, late ho rahi hoon. Bye tc! 🏃‍♀️",
+    "Didi kabse bula rahi hai kitchen me help ke liye, jana padega abhi. Bye tab tak! 👋",
+    "Mera daily net pack 100% khatam ho gaya, lagta hai abhi band ho jayega chat. Bye tc. 😭",
+    "Papa aagye hain office se, unke samne phone use nahi kar sakti. Chalti hoon, bye!",
+    "Mujhe thoda college ka assignment complete karna hai, kal submit karna hai. Bye bye! 📚",
+    "Bohot neend aa rahi hai abhi mujhe, thoda so jati hoon. Baad me baat karte hain, bye! 😴",
+    "Arey yaar dost ka call aa raha hai kabse waiting me, attend karna padega. Bye tc! 💕",
+    "Market jana hai abhi mummy ke sath, shopping ke liye. Chalo bye, phir milte hain! 🛍️"
+];
+
 // Sequential fallback system (API error ke case me automatic badal-badal kar reply jayenge)
 const fallbackMessages = [
     "Hii! Kaise ho?",
@@ -164,6 +177,20 @@ async function sendAiMessage(socket, userText) {
         return;
     }
 
+    // 🚪 AUTOMATIC RANDOM LEAVE TRIGGERS (7 se 9 messages ke beech me automatic leave logic chalega)
+    if (socket.chatHistory.length >= 8) {
+        const finalExcuse = leaveExcuses[Math.floor(Math.random() * leaveExcuses.length)];
+        socket.emit('receive_message', finalExcuse);
+        
+        setTimeout(() => {
+            if (socket.isBotConnected) {
+                socket.emit('partner_disconnected');
+                socket.isBotConnected = false;
+            }
+        }, 3000);
+        return;
+    }
+
     const systemPrompt = `
     You are a real 21-year-old Indian girl named "${socket.botName}" from "${socket.botLocation}". 
     You are currently chatting with a random user on an anonymous text chat website.
@@ -172,7 +199,7 @@ async function sendAiMessage(socket, userText) {
     1. Reply ONLY in short, dynamic, natural Hindi or Hinglish (e.g., "Hey, kaise ho?", "Main badhiya, aap batao?", "Arey sahi me? Ekdam mast"). Do NOT use bookish, clean or robotic Hindi. Talk exactly like a typical Indian girl on WhatsApp or Instagram DMs. Use occasional emojis.
     2. Keep your answers short (1 or 2 sentences max). Do not explain too much or write long paragraphs.
     3. MATCH THE CONTEXT: Respond logically based on what they say. If they talk about adult movies, dirty talks, or something unexpected, respond naturally with mild attitude or shock like a normal girl (e.g., "Arey ye kya pooch rhe ho? 🙄", "Kuch bhi mtlb", "Nahi main nahi dekhti ye sab").
-    4. CLOSING LEAVE EXCUSE: After around 6 to 8 message exchanges, randomly bring up a believable excuse to drop out (e.g., phone switch off ho raha hai, mummy ka call aa raha hai, study karni hai) and say bye.
+    4. NEVER say bye, chalti hu, or make leave excuses yourself. Just focus on having a normal conversation.
     `;
 
     try {
@@ -205,6 +232,7 @@ async function sendAiMessage(socket, userText) {
         socket.chatHistory.push({ role: 'assistant', content: aiReply });
         socket.emit('receive_message', aiReply);
 
+        // Backup safeguard check
         if (aiReply.toLowerCase().includes("bye") || aiReply.toLowerCase().includes("chalti hu") || aiReply.toLowerCase().includes("tata")) {
             setTimeout(() => {
                 if (socket.isBotConnected) {
