@@ -323,9 +323,10 @@
             document.getElementById('matchName').innerText = partnerData.name;
             document.getElementById('matchAge').innerText = "Age: " + partnerData.age;
             
+            // Clean Default Avatars (Yellow shirt/beard one has been removed completely)
             const defaultAvatar = partnerData.gender === 'female' 
                 ? 'https://cdn-icons-png.flaticon.com/512/6997/6997662.png' 
-                : 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                : 'https://cdn-icons-png.flaticon.com/512/147/147144.png'; 
                 
             document.getElementById('matchPic').src = partnerData.pic || defaultAvatar;
             document.getElementById('chatHeaderTitle').innerText = `${partnerData.name} (${partnerData.age})`;
