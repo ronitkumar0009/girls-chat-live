@@ -1,7 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { Groq } = require('groq-sdk'); // ⚡ Imported official Groq SDK
+const { Groq } = require('groq-sdk'); // ⚡ Official Groq SDK
 
 // 🔐 Render Environment Variables se Groq API Key read hogi
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -29,20 +29,21 @@ const instaExcuses = [
     "Nahi abhi yahi baat karte hain na, insta thoda personal ho jata hai."
 ];
 
-// 🔥 RANDOM CHAT EXIT EXCUSES (Har baar bilkul random aur alag bahana aayega)
-const leaveExcuses = [
-    "Arey yaar, phone ki battery 2% hi bachi hai, switch off hone wala hai. Chalti hoon, bye! 🔋",
-    "Suno, mujhe abhi coaching/college ke liye nikalna hai, late ho rahi hoon. Bye tc! 🏃‍♀️",
-    "Didi kabse bula rahi hai kitchen me help ke liye, jana padega abhi. Bye tab tak! 👋",
-    "Mera daily net pack 100% khatam ho gaya, lagta hai abhi band ho jayega chat. Bye tc. 😭",
-    "Papa aagye hain office se, unke samne phone use nahi kar sakti. Chalti hoon, bye!",
-    "Mujhe thoda college ka assignment complete karna hai, kal submit karna hai. Bye bye! 📚",
-    "Bohot neend aa rahi hai abhi mujhe, thoda so jati hoon. Baad me baat karte hain, bye! 😴",
-    "Arey yaar dost ka call aa raha hai kabse waiting me, attend karna padega. Bye tc! 💕",
-    "Market jana hai abhi mummy ke sath, shopping ke liye. Chalo bye, phir milte hain! 🛍️"
-];
+// Helper function to get the current time period name for Indian Standard Time
+function getCurrentTimeContext() {
+    const currentDate = new Date();
+    const utcOffset = currentDate.getTime() + (currentDate.getTimezoneOffset() * 60000);
+    const istDate = new Date(utcOffset + (3600000 * 5.5)); 
+    const currentHour = istDate.getHours(); 
 
-// Sequential fallback system (API error ke case me automatic badal-badal kar reply jayenge)
+    if (currentHour >= 5 && currentHour < 12) return "Morning (Subah ka waqt)";
+    if (currentHour >= 12 && currentHour < 16) return "Afternoon (Dopehar ka waqt)";
+    if (currentHour >= 16 && currentHour < 20) return "Evening (Shaam ka waqt)";
+    if (currentHour >= 20 && currentHour < 24) return "Night (Raat ka waqt)";
+    return "Late Night (Late raat ka waqt)";
+}
+
+// Sequential fallback system
 const fallbackMessages = [
     "Hii! Kaise ho?",
     "Arey suno na, kya kar rahe ho waise?",
@@ -57,27 +58,49 @@ io.on('connection', (socket) => {
     io.emit('update_online_count', totalOnlineCount);
 
     socket.on('find_match', (data) => {
-        socket.myGender = data.myGender;
-        socket.targetGender = data.targetGender;
+        // Cleaning and restoring initial variables
+        clearTimeout(socket.botTimeout);
+        disconnectPartner(socket);
+        waitingUsers = waitingUsers.filter(user => user.id !== socket.id);
+
+        socket.myGender = data.myGender || "unspecified";
+        socket.targetGender = data.targetGender || "everyone";
         socket.profileName = data.profileName || "Stranger";
         socket.profileAge = data.profileAge || "22";
         socket.profilePic = data.profilePic || ""; 
         
         socket.isBotConnected = false;
         socket.chatHistory = [];
-        socket.isProcessing = false; // Prevents double messages
-        socket.fallbackIndex = 0; // Tracks response chain in case of API failures
+        socket.isProcessing = false; 
+        socket.fallbackIndex = 0; 
 
         socket.botName = botNames[Math.floor(Math.random() * botNames.length)];
         socket.botLocation = botLocations[Math.floor(Math.random() * botLocations.length)];
         socket.botAge = Math.floor(Math.random() * (24 - 19 + 1)) + 19;
 
-        let match = waitingUsers.find(user => user.id !== socket.id);
+        // 👥 ADVANCED PRIVATE ROOM GENDER MATCHMAKING LOGIC
+        let match = waitingUsers.find(user => {
+            if (user.id === socket.id) return false;
+
+            // Check if socket satisfies user requirements
+            const amIMatchForUser = (user.targetGender === 'everyone' || user.targetGender === socket.myGender);
+            // Check if user satisfies socket requirements
+            const isUserMatchForMe = (socket.targetGender === 'everyone' || socket.targetGender === user.myGender);
+
+            return amIMatchForUser && isUserMatchForMe;
+        });
 
         if (match) {
             waitingUsers = waitingUsers.filter(user => user.id !== match.id);
+            
             socket.partner = match;
             match.partner = socket;
+
+            const roomId = `room_${socket.id}_${match.id}`;
+            socket.join(roomId);
+            match.join(roomId);
+            socket.currentRoom = roomId;
+            match.currentRoom = roomId;
 
             socket.emit('match_found', { name: match.profileName, age: match.profileAge, pic: match.profilePic, gender: match.myGender });
             match.emit('match_found', { name: socket.profileName, age: socket.profileAge, pic: socket.profilePic, gender: socket.myGender });
@@ -89,7 +112,6 @@ io.on('connection', (socket) => {
                     waitingUsers = waitingUsers.filter(user => user.id !== socket.id);
                     socket.isBotConnected = true;
                     
-                    // 👩 Custom avatar: Beautiful custom pink-theme avatar with initial
                     const letter = socket.botName.charAt(0);
                     const dynamicPic = `https://ui-avatars.com/api/?name=${letter}&background=db2777&color=fff&rounded=true&bold=true&size=128`;
 
@@ -97,7 +119,7 @@ io.on('connection', (socket) => {
                         name: socket.botName,
                         age: socket.botAge,
                         pic: dynamicPic,
-                        gender: 'female' // Forces frontend to parse female styles
+                        gender: 'female' 
                     });
                 }
             }, 3000); 
@@ -106,22 +128,20 @@ io.on('connection', (socket) => {
 
     socket.on('send_message', (msg) => {
         if (socket.partner) {
-            socket.partner.emit('receive_message', msg);
+            io.to(socket.currentRoom).emit('receive_message', msg);
         } else if (socket.isBotConnected) {
             if (socket.isProcessing) return;
             socket.isProcessing = true;
 
-            // Show typing indicator after 500ms for responsiveness
             setTimeout(() => {
                 if (socket.isBotConnected) socket.emit('partner_typing', true);
             }, 500);
             
-            // ⏱️ Perfect 6 seconds total delay before sending reply
             setTimeout(() => {
                 if (socket.isBotConnected) {
                     sendAiMessage(socket, msg).finally(() => {
                         socket.emit('partner_typing', false);
-                        socket.isProcessing = false; // Release lock
+                        socket.isProcessing = false; 
                     });
                 } else {
                     socket.isProcessing = false;
@@ -136,6 +156,7 @@ io.on('connection', (socket) => {
 
     socket.on('leave_chat', () => {
         clearTimeout(socket.botTimeout);
+        waitingUsers = waitingUsers.filter(user => user.id !== socket.id);
         disconnectPartner(socket);
     });
 
@@ -153,7 +174,6 @@ async function sendAiMessage(socket, userText) {
 
     const userLower = userText.toLowerCase();
     
-    // 🛠️ FIX: Strict match check taaki "video" ya kisi normal baaki baaton par id excuses open na hon
     const asksForSocials = 
         userLower.includes("insta") || 
         userLower.includes("instagram") || 
@@ -161,7 +181,7 @@ async function sendAiMessage(socket, userText) {
         userLower.includes("snapchat") || 
         userLower.includes("tele ") ||
         userLower.includes("telegram") ||
-        (userLower.includes(" id") && !userLower.includes("adult")) || // "give id" check
+        (userLower.includes(" id") && !userLower.includes("adult")) || 
         userLower.includes("number") || 
         userLower.includes("phone") ||
         userLower.includes("mobile") ||
@@ -177,10 +197,35 @@ async function sendAiMessage(socket, userText) {
         return;
     }
 
-    // 🚪 AUTOMATIC RANDOM LEAVE TRIGGERS (7 se 9 messages ke beech me automatic leave logic chalega)
+    const timeContext = getCurrentTimeContext();
+
+    // 🌐 AI-BASED LIVE DYNAMIC LEAVE ENGINE (INTERNET/LLM POWERED)
     if (socket.chatHistory.length >= 8) {
-        const finalExcuse = leaveExcuses[Math.floor(Math.random() * leaveExcuses.length)];
-        socket.emit('receive_message', finalExcuse);
+        try {
+            const exitCompletion = await groq.chat.completions.create({
+                messages: [
+                    {
+                        role: "system",
+                        content: `You are a real 21-year-old Indian girl named "${socket.botName}". You must immediately generate a highly realistic, extremely natural, short WhatsApp-style Hindi/Hinglish message making an urgent excuse to suddenly leave the chat right now. 
+                        
+                        CRITICAL RULE: The excuse MUST perfectly match the current time of day which is: "${timeContext}". (For example: if morning, say college/coaching/mummy calling. If night, say papa came home/dinner/sleepy/net pack over).
+                        
+                        Respond ONLY with that one short sentence. Do not add quotes, do not add explanation, just give the dynamic text with common emojis.`
+                    }
+                ],
+                model: "llama-3.3-70b-versatile",
+                temperature: 0.9,
+                max_tokens: 60
+            });
+
+            let dynamicLiveExcuse = exitCompletion.choices[0].message.content.trim().replace(/^["']|["']$/g, '');
+            if (!dynamicLiveExcuse) dynamicLiveExcuse = "Arey yaar mujhe jana hoga abhi thoda kaam aa gaya sudden. Bye tc! ❤️";
+
+            socket.emit('receive_message', dynamicLiveExcuse);
+        } catch (err) {
+            console.error("Exit Generator Error:", err);
+            socket.emit('receive_message', "Arey phone switch off hone wala hai 1% bacha hai, chalti hoon bye! 🔋");
+        }
         
         setTimeout(() => {
             if (socket.isBotConnected) {
@@ -214,7 +259,6 @@ async function sendAiMessage(socket, userText) {
             ...socket.chatHistory
         ];
 
-        // ⚡ Groq Cloud Client Call (Ultra-fast but chained behind the 6s UI buffer)
         const chatCompletion = await groq.chat.completions.create({
             messages: messages,
             model: "llama-3.3-70b-versatile",
@@ -232,7 +276,6 @@ async function sendAiMessage(socket, userText) {
         socket.chatHistory.push({ role: 'assistant', content: aiReply });
         socket.emit('receive_message', aiReply);
 
-        // Backup safeguard check
         if (aiReply.toLowerCase().includes("bye") || aiReply.toLowerCase().includes("chalti hu") || aiReply.toLowerCase().includes("tata")) {
             setTimeout(() => {
                 if (socket.isBotConnected) {
@@ -256,8 +299,16 @@ async function sendAiMessage(socket, userText) {
 function disconnectPartner(socket) {
     if (socket.partner) {
         socket.partner.emit('partner_disconnected');
+        
+        if(socket.currentRoom) {
+            socket.partner.leave(socket.currentRoom);
+            socket.leave(socket.currentRoom);
+        }
+        
         socket.partner.partner = null;
+        socket.partner.currentRoom = null;
         socket.partner = null;
+        socket.currentRoom = null;
     }
     if (socket.isBotConnected) {
         socket.isBotConnected = false;
