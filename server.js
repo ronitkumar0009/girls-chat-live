@@ -20,11 +20,12 @@ let totalOnlineCount = 0;
 const botNames = ["Priya", "Anjali", "Sneha", "Riya", "Kriti", "Simran", "Tanya", "Neha", "Divya", "Palak", "Alka", "Pooja", "Shreya"];
 const botLocations = ["Delhi", "Lucknow", "Mumbai", "Chandigarh", "Jaipur", "Pune", "Kolkata", "Indore", "Noida", "Patna"];
 
-// 👩 Only Girl Avatars (Pehle isme ladke ka icon mix ho gaya tha)
+// 👩 Guaranteed High-Quality Beautiful Vector Girl Avatars (Zero Boys Mix)
 const botAvatars = [
-    "https://cdn-icons-png.flaticon.com/512/6997/6997662.png", // Female avatar 1
-    "https://cdn-icons-png.flaticon.com/512/4140/4140047.png", // Female avatar 2
-    "https://cdn-icons-png.flaticon.com/512/4140/4140048.png"  // Female avatar 3
+    "https://cdn-icons-png.flaticon.com/512/6997/6997662.png", // Beautiful Clean Female Icon 1
+    "https://cdn-icons-png.flaticon.com/512/4140/4140047.png", // Female Icon 2
+    "https://cdn-icons-png.flaticon.com/512/4140/4140048.png", // Female Icon 3
+    "https://cdn-icons-png.flaticon.com/512/1154/1154448.png"  // Female Icon 4
 ];
 
 // Instagram par refuse karne ke liye random bahane
@@ -34,6 +35,16 @@ const instaExcuses = [
     "Mera account private hai aur mummy bhi follow karti hain, toh wahan nahi de sakti sry.",
     "Mujhe anjaan logo pe jaldi trust nahi hota, toh abhi id share nahi karungi sorry. 🙈",
     "Nahi abhi yahi baat karte hain na, insta thoda personal ho jata hai."
+];
+
+// Fail-safe fallbacks agar API block ya fail ho jaye (Sequential, repeat nahi honge)
+const fallbackMessages = [
+    "Hii! Kaise ho?",
+    "Arey suno na, kya kar rahe ho waise?",
+    "Hmm... aur batao? Kuch acchi baatein karte hain na.",
+    "Waise aap kahan se ho? Main toh Delhi se hoon.",
+    "Aap bht acche se baat karte ho yaar, sach me!",
+    "Chalo ab main chalti hoon thoda kam hai, baad me baat karenge, bye! ❤️"
 ];
 
 io.on('connection', (socket) => {
@@ -50,6 +61,7 @@ io.on('connection', (socket) => {
         socket.isBotConnected = false;
         socket.chatHistory = [];
         socket.isProcessing = false; // Duplicate messages preventer lock
+        socket.fallbackIndex = 0; // Tracks response chain in case of API failure to prevent repetitions
 
         socket.botName = botNames[Math.floor(Math.random() * botNames.length)];
         socket.botLocation = botLocations[Math.floor(Math.random() * botLocations.length)];
@@ -72,18 +84,17 @@ io.on('connection', (socket) => {
                     waitingUsers = waitingUsers.filter(user => user.id !== socket.id);
                     socket.isBotConnected = true;
                     
-                    // Direct proper girl avatar selection
+                    // Direct proper female avatar selection
                     const randomPic = botAvatars[Math.floor(Math.random() * botAvatars.length)];
 
                     socket.emit('match_found', {
                         name: socket.botName,
                         age: socket.botAge,
                         pic: randomPic,
-                        gender: 'female'
+                        gender: 'female' // Strict UI gender trigger
                     });
 
-                    // NOT sending any automatic initial message.
-                    // The bot will silently wait for the user to initiate the chat.
+                    // Bot silently waits for the user to initiate the chat.
                 }
             }, 3000); 
         }
@@ -139,9 +150,9 @@ io.on('connection', (socket) => {
 async function sendAiMessage(socket, userText) {
     if (!socket.isBotConnected) return;
 
-    // Direct Instagram check to save API and avoid failure loops
+    // Direct Instagram/Snap/Number check to save API and avoid failure loops
     const userLower = userText.toLowerCase();
-    if (userLower.includes("insta") || userLower.includes("instagram") || userLower.includes("snap") || userLower.includes("id") || userLower.includes("number") || userLower.includes("no")) {
+    if (userLower.includes("insta") || userLower.includes("instagram") || userLower.includes("snap") || userLower.includes("id") || userLower.includes("number") || userLower.includes("no") || userLower.includes("num")) {
         const randomExcuse = instaExcuses[Math.floor(Math.random() * instaExcuses.length)];
         
         socket.chatHistory.push({ role: 'user', parts: [{ text: userText }] });
@@ -199,14 +210,13 @@ async function sendAiMessage(socket, userText) {
         }
 
     } catch (error) {
-        console.error("Gemini Engine Error:", error);
-        const fallbackMessages = [
-            "Arey suno na, kya kar rahe ho waise?",
-            "Hmm... aur batao?",
-            "Net slow hai shayad mera.. haan batao?",
-            "Tum kya karte ho waise?"
-        ];
-        const randomFallback = fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
+        console.error("Gemini Engine Error (Falling back to safe sequence):", error);
+        
+        // Dynamic safe fallback index: Har message ke baad next sequential index pick hoga (No repeats!)
+        const currentIdx = socket.fallbackIndex % fallbackMessages.length;
+        const randomFallback = fallbackMessages[currentIdx];
+        
+        socket.fallbackIndex += 1; // Agle trigger par agla message aayega!
         socket.emit('receive_message', randomFallback);
     }
 }
