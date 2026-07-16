@@ -1,10 +1,10 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { GoogleGenAI } = require('@google/genai');
+const { Groq } = require('groq-sdk'); // ⚡ Imported official Groq SDK
 
-// 🔐 Secure way: Render ke Environment Variables se key automatically read hogi
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// 🔐 Render Environment Variables se Groq API Key read hogi
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const app = express();
 const server = http.createServer(app);
@@ -20,15 +20,7 @@ let totalOnlineCount = 0;
 const botNames = ["Priya", "Anjali", "Sneha", "Riya", "Kriti", "Simran", "Tanya", "Neha", "Divya", "Palak", "Alka", "Pooja", "Shreya"];
 const botLocations = ["Delhi", "Lucknow", "Mumbai", "Chandigarh", "Jaipur", "Pune", "Kolkata", "Indore", "Noida", "Patna"];
 
-// 👩 Guaranteed High-Quality Beautiful Vector Girl Avatars (Zero Boys Mix)
-const botAvatars = [
-    "https://cdn-icons-png.flaticon.com/512/6997/6997662.png", // Beautiful Clean Female Icon 1
-    "https://cdn-icons-png.flaticon.com/512/4140/4140047.png", // Female Icon 2
-    "https://cdn-icons-png.flaticon.com/512/4140/4140048.png", // Female Icon 3
-    "https://cdn-icons-png.flaticon.com/512/1154/1154448.png"  // Female Icon 4
-];
-
-// Instagram par refuse karne ke liye random bahane
+// Instagram aur number maangne par natural rejection excuses
 const instaExcuses = [
     "Nahi yaar, main strangers ko insta id nahi deti, bohot stalkers hote hain.",
     "Insta account temporary deactivated hai mera abhi, board/exams ki wajah se.",
@@ -37,7 +29,7 @@ const instaExcuses = [
     "Nahi abhi yahi baat karte hain na, insta thoda personal ho jata hai."
 ];
 
-// Fail-safe fallbacks agar API block ya fail ho jaye (Sequential, repeat nahi honge)
+// Sequential fallback system (API error ke case me automatic badal-badal kar reply jayenge)
 const fallbackMessages = [
     "Hii! Kaise ho?",
     "Arey suno na, kya kar rahe ho waise?",
@@ -60,8 +52,8 @@ io.on('connection', (socket) => {
         
         socket.isBotConnected = false;
         socket.chatHistory = [];
-        socket.isProcessing = false; // Duplicate messages preventer lock
-        socket.fallbackIndex = 0; // Tracks response chain in case of API failure to prevent repetitions
+        socket.isProcessing = false; // Prevents double messages
+        socket.fallbackIndex = 0; // Tracks response chain in case of API failures
 
         socket.botName = botNames[Math.floor(Math.random() * botNames.length)];
         socket.botLocation = botLocations[Math.floor(Math.random() * botLocations.length)];
@@ -84,17 +76,16 @@ io.on('connection', (socket) => {
                     waitingUsers = waitingUsers.filter(user => user.id !== socket.id);
                     socket.isBotConnected = true;
                     
-                    // Direct proper female avatar selection
-                    const randomPic = botAvatars[Math.floor(Math.random() * botAvatars.length)];
+                    // 👩 Custom avatar: Beautiful custom pink-theme avatar with initial (e.g., 'S' for Simran)
+                    const letter = socket.botName.charAt(0);
+                    const dynamicPic = `https://ui-avatars.com/api/?name=${letter}&background=db2777&color=fff&rounded=true&bold=true&size=128`;
 
                     socket.emit('match_found', {
                         name: socket.botName,
                         age: socket.botAge,
-                        pic: randomPic,
-                        gender: 'female' // Strict UI gender trigger
+                        pic: dynamicPic,
+                        gender: 'female' // Forces frontend to parse female styles
                     });
-
-                    // Bot silently waits for the user to initiate the chat.
                 }
             }, 3000); 
         }
@@ -107,25 +98,23 @@ io.on('connection', (socket) => {
             if (socket.isProcessing) return;
             socket.isProcessing = true;
 
-            // Strict 6 seconds delay (6000ms)
-            const typingDelay = 6000; 
-
-            // Show typing after exactly 1 second of user sending message
+            // Show typing indicator after 800ms
             setTimeout(() => {
                 if (socket.isBotConnected) socket.emit('partner_typing', true);
-            }, 1000);
+            }, 800);
             
-            // Send reply after exactly 6 seconds total has passed
+            // Fast API execution and safe unlock chain
             setTimeout(() => {
                 if (socket.isBotConnected) {
-                    socket.emit('partner_typing', false);
-                    sendAiMessage(socket, msg).then(() => {
+                    sendAiMessage(socket, msg).finally(() => {
+                        // Safe state reset: Yeh hamesha run hoga chahe API success ho ya fail!
+                        socket.emit('partner_typing', false);
                         socket.isProcessing = false; // Release lock
                     });
                 } else {
                     socket.isProcessing = false;
                 }
-            }, typingDelay);
+            }, 3500); // Super fast 3.5s real typing simulation
         }
     });
 
@@ -150,54 +139,57 @@ io.on('connection', (socket) => {
 async function sendAiMessage(socket, userText) {
     if (!socket.isBotConnected) return;
 
-    // Direct Instagram/Snap/Number check to save API and avoid failure loops
     const userLower = userText.toLowerCase();
     if (userLower.includes("insta") || userLower.includes("instagram") || userLower.includes("snap") || userLower.includes("id") || userLower.includes("number") || userLower.includes("no") || userLower.includes("num")) {
         const randomExcuse = instaExcuses[Math.floor(Math.random() * instaExcuses.length)];
         
-        socket.chatHistory.push({ role: 'user', parts: [{ text: userText }] });
-        socket.chatHistory.push({ role: 'model', parts: [{ text: randomExcuse }] });
+        socket.chatHistory.push({ role: 'user', content: userText });
+        socket.chatHistory.push({ role: 'assistant', content: randomExcuse });
         
         socket.emit('receive_message', randomExcuse);
         return;
     }
 
-    const systemInstruction = `
+    const systemPrompt = `
     You are a real 21-year-old Indian girl named "${socket.botName}" from "${socket.botLocation}". 
     You are currently chatting with a random user on an anonymous text chat website.
     
     RULES YOU MUST FOLLOW:
-    1. Reply ONLY in short, dynamic, natural Hindi or Hinglish (e.g., "Hey, kaise ho?", "Main badhiya, aap batao?", "Arey sahi me? Ekdam mast"). Do NOT use bookish or robotic Hindi. Talk exactly like a typical Indian girl on WhatsApp or Instagram DMs. Use occasional emojis.
-    2. Keep your answers short (1 or 2 sentences max). Do not explain too much or write paragraphs.
-    3. MATCH THE CONTEXT: If the user says they are from your city or same location, act surprised and naturally ask where exactly or tell them you live in the main town area. Respond logically based on what they say. Do not repeat previous answers. Do not say "network issue" unless the chat actually breaks.
+    1. Reply ONLY in short, dynamic, natural Hindi or Hinglish (e.g., "Hey, kaise ho?", "Main badhiya, aap batao?", "Arey sahi me? Ekdam mast"). Do NOT use bookish, clean or robotic Hindi. Talk exactly like a typical Indian girl on WhatsApp or Instagram DMs. Use occasional emojis.
+    2. Keep your answers short (1 or 2 sentences max). Do not explain too much or write long paragraphs.
+    3. MATCH THE CONTEXT: Respond logically based on what they say. Do not repeat previous answers.
     4. CLOSING LEAVE EXCUSE: After around 6 to 8 message exchanges, randomly bring up a believable excuse to drop out (e.g., phone switch off ho raha hai, mummy ka call aa raha hai, study karni hai) and say bye.
     `;
 
     try {
-        socket.chatHistory.push({ role: 'user', parts: [{ text: userText }] });
+        socket.chatHistory.push({ role: 'user', content: userText });
 
-        // Keep history in check to avoid repeating old context loops
-        if (socket.chatHistory.length > 20) {
-            socket.chatHistory = socket.chatHistory.slice(-10);
+        // Slice history to keep tokens small and fast
+        if (socket.chatHistory.length > 12) {
+            socket.chatHistory = socket.chatHistory.slice(-6);
         }
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: socket.chatHistory,
-            config: {
-                systemInstruction: systemInstruction,
-                maxOutputTokens: 70,
-                temperature: 0.8
-            }
+        const messages = [
+            { role: "system", content: systemPrompt },
+            ...socket.chatHistory
+        ];
+
+        // ⚡ Groq Cloud Client Call (Super Fast & Reliable)
+        const chatCompletion = await groq.chat.completions.create({
+            messages: messages,
+            model: "llama-3.3-70b-versatile",
+            temperature: 0.8,
+            max_tokens: 80,
+            top_p: 1
         });
 
-        let aiReply = response.text.trim();
+        let aiReply = chatCompletion.choices[0].message.content.trim();
         
-        if (!aiReply || aiReply === "") {
+        if (!aiReply) {
             aiReply = "Aur batao, kya chal raha?";
         }
 
-        socket.chatHistory.push({ role: 'model', parts: [{ text: aiReply }] });
+        socket.chatHistory.push({ role: 'assistant', content: aiReply });
         socket.emit('receive_message', aiReply);
 
         if (aiReply.toLowerCase().includes("bye") || aiReply.toLowerCase().includes("chalti hu") || aiReply.toLowerCase().includes("tata")) {
@@ -210,13 +202,13 @@ async function sendAiMessage(socket, userText) {
         }
 
     } catch (error) {
-        console.error("Gemini Engine Error (Falling back to safe sequence):", error);
+        console.error("Groq Engine Error (Sequential Fallback Active):", error);
         
-        // Dynamic safe fallback index: Har message ke baad next sequential index pick hoga (No repeats!)
+        // Loop safety: Fallback dynamically to prevent same message repetitions
         const currentIdx = socket.fallbackIndex % fallbackMessages.length;
         const randomFallback = fallbackMessages[currentIdx];
         
-        socket.fallbackIndex += 1; // Agle trigger par agla message aayega!
+        socket.fallbackIndex += 1; // Increment index for the next fallbacks
         socket.emit('receive_message', randomFallback);
     }
 }

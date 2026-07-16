@@ -1,14 +1,14 @@
 {
   "name": "girls-chat-app",
   "version": "1.0.0",
-  "description": "",
+  "description": "Anonymous Online Girls Chat Application",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "@google/genai": "latest",
     "express": "^4.19.2",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "groq-sdk": "^0.15.0"
   }
 }
