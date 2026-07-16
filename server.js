@@ -76,7 +76,7 @@ io.on('connection', (socket) => {
                     waitingUsers = waitingUsers.filter(user => user.id !== socket.id);
                     socket.isBotConnected = true;
                     
-                    // 👩 Custom avatar: Beautiful custom pink-theme avatar with initial (e.g., 'S' for Simran)
+                    // 👩 Custom avatar: Beautiful custom pink-theme avatar with initial
                     const letter = socket.botName.charAt(0);
                     const dynamicPic = `https://ui-avatars.com/api/?name=${letter}&background=db2777&color=fff&rounded=true&bold=true&size=128`;
 
@@ -98,23 +98,22 @@ io.on('connection', (socket) => {
             if (socket.isProcessing) return;
             socket.isProcessing = true;
 
-            // Show typing indicator after 800ms
+            // Show typing indicator after 500ms for responsiveness
             setTimeout(() => {
                 if (socket.isBotConnected) socket.emit('partner_typing', true);
-            }, 800);
+            }, 500);
             
-            // Fast API execution and safe unlock chain
+            // ⏱️ Perfect 6 seconds total delay before sending reply
             setTimeout(() => {
                 if (socket.isBotConnected) {
                     sendAiMessage(socket, msg).finally(() => {
-                        // Safe state reset: Yeh hamesha run hoga chahe API success ho ya fail!
                         socket.emit('partner_typing', false);
                         socket.isProcessing = false; // Release lock
                     });
                 } else {
                     socket.isProcessing = false;
                 }
-            }, 3500); // Super fast 3.5s real typing simulation
+            }, 6000); 
         }
     });
 
@@ -140,7 +139,22 @@ async function sendAiMessage(socket, userText) {
     if (!socket.isBotConnected) return;
 
     const userLower = userText.toLowerCase();
-    if (userLower.includes("insta") || userLower.includes("instagram") || userLower.includes("snap") || userLower.includes("id") || userLower.includes("number") || userLower.includes("no") || userLower.includes("num")) {
+    
+    // 🛠️ FIX: Strict match check taaki "video" ya kisi normal baaki baaton par id excuses open na hon
+    const asksForSocials = 
+        userLower.includes("insta") || 
+        userLower.includes("instagram") || 
+        userLower.includes("snap") || 
+        userLower.includes("snapchat") || 
+        userLower.includes("tele ") ||
+        userLower.includes("telegram") ||
+        (userLower.includes(" id") && !userLower.includes("adult")) || // "give id" check
+        userLower.includes("number") || 
+        userLower.includes("phone") ||
+        userLower.includes("mobile") ||
+        userLower.includes("whatsapp");
+
+    if (asksForSocials) {
         const randomExcuse = instaExcuses[Math.floor(Math.random() * instaExcuses.length)];
         
         socket.chatHistory.push({ role: 'user', content: userText });
@@ -157,14 +171,13 @@ async function sendAiMessage(socket, userText) {
     RULES YOU MUST FOLLOW:
     1. Reply ONLY in short, dynamic, natural Hindi or Hinglish (e.g., "Hey, kaise ho?", "Main badhiya, aap batao?", "Arey sahi me? Ekdam mast"). Do NOT use bookish, clean or robotic Hindi. Talk exactly like a typical Indian girl on WhatsApp or Instagram DMs. Use occasional emojis.
     2. Keep your answers short (1 or 2 sentences max). Do not explain too much or write long paragraphs.
-    3. MATCH THE CONTEXT: Respond logically based on what they say. Do not repeat previous answers.
+    3. MATCH THE CONTEXT: Respond logically based on what they say. If they talk about adult movies, dirty talks, or something unexpected, respond naturally with mild attitude or shock like a normal girl (e.g., "Arey ye kya pooch rhe ho? 🙄", "Kuch bhi mtlb", "Nahi main nahi dekhti ye sab").
     4. CLOSING LEAVE EXCUSE: After around 6 to 8 message exchanges, randomly bring up a believable excuse to drop out (e.g., phone switch off ho raha hai, mummy ka call aa raha hai, study karni hai) and say bye.
     `;
 
     try {
         socket.chatHistory.push({ role: 'user', content: userText });
 
-        // Slice history to keep tokens small and fast
         if (socket.chatHistory.length > 12) {
             socket.chatHistory = socket.chatHistory.slice(-6);
         }
@@ -174,7 +187,7 @@ async function sendAiMessage(socket, userText) {
             ...socket.chatHistory
         ];
 
-        // ⚡ Groq Cloud Client Call (Super Fast & Reliable)
+        // ⚡ Groq Cloud Client Call (Ultra-fast but chained behind the 6s UI buffer)
         const chatCompletion = await groq.chat.completions.create({
             messages: messages,
             model: "llama-3.3-70b-versatile",
@@ -204,11 +217,10 @@ async function sendAiMessage(socket, userText) {
     } catch (error) {
         console.error("Groq Engine Error (Sequential Fallback Active):", error);
         
-        // Loop safety: Fallback dynamically to prevent same message repetitions
         const currentIdx = socket.fallbackIndex % fallbackMessages.length;
         const randomFallback = fallbackMessages[currentIdx];
         
-        socket.fallbackIndex += 1; // Increment index for the next fallbacks
+        socket.fallbackIndex += 1;
         socket.emit('receive_message', randomFallback);
     }
 }
