@@ -83,8 +83,12 @@
         .msg { padding: 10px 15px; border-radius: 12px; max-width: 75%; animation: pop 0.2s ease; line-height: 1.5; font-size: 15px;}
         .me { background: var(--primary-gradient); align-self: flex-end;}
         .partner { background: #27272a; align-self: flex-start;}
-        .input-area { display: flex; gap: 8px;}
-        .input-area input { flex: 1; background: var(--bg-dark); border: 1px solid #27272a; color: white; padding: 12px; border-radius: 8px; outline: none;}
+        .input-area { display: flex; flex-direction: column; gap: 8px;}
+        .input-row { display: flex; gap: 8px; width: 100%;}
+        .input-row input { flex: 1; background: var(--bg-dark); border: 1px solid #27272a; color: white; padding: 12px; border-radius: 8px; outline: none;}
+
+        .partner-status { font-size: 12px; color: var(--success-green); display: flex; align-items: center; gap: 4px; margin-top: 2px; font-weight: 500;}
+        .status-offline { color: #ef4444 !important; }
 
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
         @keyframes pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -108,7 +112,6 @@
                 Discover the best <strong>free chat with girl</strong> platforms where you can enjoy <strong>online chat with girls</strong> instantly. Experienced random chat with girls across USA, UK, UAE, India, Pakistan and 35+ countries — completely <strong>online chat free</strong>, no registration required.
             </p>
             <div class="grid-container" style="max-width: 900px; margin-bottom: 40px;">
-                <!-- Id dynamically updates from socket -->
                 <div class="stat-card"><div class="stat-icon">👥</div><div id="liveCounterBox" class="stat-value">1+</div><div class="stat-label">ONLINE NOW</div></div>
                 <div class="stat-card"><div class="stat-icon">🌐</div><div class="stat-value">42+</div><div class="stat-label">COUNTRIES</div></div>
                 <div class="stat-card"><div class="stat-icon">🛡️</div><div class="stat-value">156+</div><div class="stat-label">MODERATORS</div></div>
@@ -176,8 +179,6 @@
             </div>
 
             <h2 style="font-size: 28px; margin-bottom: 10px;">Find Your Perfect Chat Room</h2>
-            <p class="description" style="margin-bottom: 30px;">Join thousands of girls discussing what matters to you</p>
-            
             <button class="action-btn" style="background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%); padding: 18px 50px;" onclick="openGenderSetup()">Enter Girls Chat Now →</button>
         </section>
     </div>
@@ -245,15 +246,21 @@
     <div id="chatScreen" class="app-container">
         <div class="chat-header">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <img id="chatHeaderPic" src="" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; background: #333;">
-                <h3 id="chatHeaderTitle">Stranger</h3>
+                <img id="chatHeaderPic" src="" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #333;">
+                <div>
+                    <h3 id="chatHeaderTitle" style="font-size: 16px;">Stranger</h3>
+                    <div id="chatHeaderStatus" class="partner-status">● Online</div>
+                </div>
             </div>
-            <button style="background:#ef4444; border:none; color:white; padding: 6px 12px; border-radius: 6px; cursor:pointer;" onclick="next()">Next →</button>
+            <button style="background:var(--primary-gradient); border:none; color:white; padding: 6px 14px; border-radius: 8px; cursor:pointer; font-weight:600;" onclick="next()">Next →</button>
         </div>
         <div class="chat-box" id="box"></div>
         <div class="input-area">
-            <input type="text" id="inp" placeholder="Type a message..." onkeypress="if(event.key==='Enter') send()">
-            <button style="background:var(--primary-gradient); border:none; color:white; padding: 0 20px; border-radius: 8px; cursor:pointer;" onclick="send()">Send</button>
+            <div class="input-row">
+                <input type="text" id="inp" placeholder="Type a message..." onkeypress="if(event.key==='Enter') send()" oninput="handleTyping()">
+                <button style="background:var(--primary-gradient); border:none; color:white; padding: 0 20px; border-radius: 8px; cursor:pointer; font-weight:600;" onclick="send()">Send</button>
+            </div>
+            <button style="background:#ef4444; border:none; color:white; width:100%; padding: 10px; border-radius: 8px; cursor:pointer; font-weight:600; margin-top: 4px;" onclick="exitChat()">🛑 Exit Chat</button>
         </div>
     </div>
 
@@ -261,6 +268,7 @@
     <script>
         const socket = io();
         let base64Image = ""; 
+        let typingTimeout;
 
         const websiteContent = document.getElementById('websiteContent');
         const setupModal = document.getElementById('setupModal');
@@ -269,13 +277,12 @@
         const chatScreen = document.getElementById('chatScreen');
         const box = document.getElementById('box');
         const inp = document.getElementById('inp');
+        const chatHeaderStatus = document.getElementById('chatHeaderStatus');
 
         function openGenderSetup() { setupModal.style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-        // Live Real-Time Counter Update Logic
         socket.on('update_online_count', (count) => {
-            // Agar website public hai toh base counter thoda heavy dikhane ke liye real count + static badha sakte hain
             const displayCount = count + 1420; 
             document.getElementById('liveCounterBox').innerText = displayCount + "+";
             document.getElementById('roomCount1').innerText = Math.floor(displayCount * 0.4);
@@ -300,36 +307,19 @@
         function startMatch() {
             const profileName = document.getElementById('profileName').value.trim();
             const profileAge = document.getElementById('profileAge').value.trim();
-            const targetGender = document.getElementById('targetGender').value;
-
             if(!profileName || !profileAge) {
                 alert("Please fill your Name and Age to continue!");
                 return;
             }
-
-            // VIP Trigger Notification
-            if(targetGender === 'female') {
-                alert("⭐ VIP Feature: 'Females Only' filter is premium. Connecting you via standard high-priority server room right now!");
-            }
-
             setupModal.style.display = 'none';
             websiteContent.style.filter = 'blur(12px)';
             loadingScreen.style.display = 'flex';
-
             const myGender = document.getElementById('myGender').value;
-
-            socket.emit('find_match', { 
-                myGender, 
-                targetGender: 'random', // Abhi back-end crash na ho isliye standard handle kar rahe hain
-                profileName, 
-                profileAge, 
-                profilePic: base64Image 
-            });
+            socket.emit('find_match', { myGender, targetGender: 'random', profileName, profileAge, profilePic: base64Image });
         }
 
         socket.on('match_found', (partnerData) => {
             loadingScreen.style.display = 'none';
-            
             document.getElementById('matchName').innerText = partnerData.name;
             document.getElementById('matchAge').innerText = "Age: " + partnerData.age;
             
@@ -340,9 +330,12 @@
             document.getElementById('matchPic').src = partnerData.pic || defaultAvatar;
             document.getElementById('chatHeaderTitle').innerText = `${partnerData.name} (${partnerData.age})`;
             document.getElementById('chatHeaderPic').src = partnerData.pic || defaultAvatar;
+            
+            // Partner connected -> Online status reset to default green text
+            chatHeaderStatus.innerText = "● Online";
+            chatHeaderStatus.classList.remove('status-offline');
 
             matchProfileScreen.style.display = 'flex';
-
             setTimeout(() => {
                 matchProfileScreen.style.display = 'none';
                 chatScreen.style.display = 'flex';
@@ -350,10 +343,30 @@
             }, 3000);
         });
 
+        // --- Typing Status Logic ---
+        function handleTyping() {
+            socket.emit('typing', true);
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                socket.emit('typing', false);
+            }, 2000);
+        }
+
+        socket.on('partner_typing', (isTyping) => {
+            if(isTyping && !chatHeaderStatus.classList.contains('status-offline')) {
+                chatHeaderStatus.innerText = "Typing...";
+                chatHeaderStatus.style.color = "#ec4899";
+            } else if (!chatHeaderStatus.classList.contains('status-offline')) {
+                chatHeaderStatus.innerText = "● Online";
+                chatHeaderStatus.style.color = "var(--success-green)";
+            }
+        });
+
         function send() {
             if(!inp.value.trim()) return;
             box.innerHTML += `<div class="msg me">${inp.value}</div>`;
             socket.emit('send_message', inp.value);
+            socket.emit('typing', false);
             inp.value = '';
             box.scrollTop = box.scrollHeight;
         }
@@ -363,7 +376,10 @@
             box.scrollTop = box.scrollHeight;
         });
 
+        // --- Partner Offline / Left Logic ---
         socket.on('partner_disconnected', () => {
+            chatHeaderStatus.innerText = "● Offline (Left Chat)";
+            chatHeaderStatus.classList.add('status-offline');
             box.innerHTML += '<p style="text-align:center; color:#ef4444; margin-top: 10px;">Partner left the chat room.</p>';
         });
 
@@ -371,12 +387,18 @@
             chatScreen.style.display = 'none';
             loadingScreen.style.display = 'flex';
             socket.emit('leave_chat');
-            
             const myGender = document.getElementById('myGender').value;
             const profileName = document.getElementById('profileName').value;
             const profileAge = document.getElementById('profileAge').value;
-
             socket.emit('find_match', { myGender, targetGender: 'random', profileName, profileAge, profilePic: base64Image });
+        }
+
+        // --- Exit Chat Feature ---
+        function exitChat() {
+            socket.emit('leave_chat');
+            chatScreen.style.display = 'none';
+            websiteContent.style.filter = 'none';
+            box.innerHTML = '';
         }
 
         function cancelSearch() {

@@ -2,22 +2,20 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
-const app = express();
+const app = WebService = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    maxHttpBufferSize: 1e7 // Base64 profile picture ke liye bada size allow kiya hai
+    maxHttpBufferSize: 1e7
 });
 
 app.use(express.static('public'));
 
 let waitingUsers = [];
-let totalOnlineCount = 0; // Total active users track karne ke liye
+let totalOnlineCount = 0;
 
 io.on('connection', (socket) => {
     totalOnlineCount++;
-    // Sabhi users ko real-time total online count bhejo
     io.emit('update_online_count', totalOnlineCount);
-    console.log('User connected. Total Online:', totalOnlineCount);
 
     socket.on('find_match', (data) => {
         socket.myGender = data.myGender;
@@ -69,17 +67,22 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- Typing Status Relay ---
+    socket.on('typing', (isTyping) => {
+        if (socket.partner) {
+            socket.partner.emit('partner_typing', isTyping);
+        }
+    });
+
     socket.on('leave_chat', () => {
         disconnectPartner(socket);
     });
 
     socket.on('disconnect', () => {
         totalOnlineCount--;
-        // Update count for everyone when someone leaves
         io.emit('update_online_count', Math.max(0, totalOnlineCount));
         waitingUsers = waitingUsers.filter(user => user.id !== socket.id);
         disconnectPartner(socket);
-        console.log('User disconnected. Total Online:', totalOnlineCount);
     });
 });
 
@@ -91,7 +94,6 @@ function disconnectPartner(socket) {
     }
 }
 
-// Port dynamic rakha hai taaki public hosting (jaise Render/Heroku) par aaram se chale
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
