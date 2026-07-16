@@ -1,6 +1,10 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const { GoogleGenAI } = require('@google/genai');
+
+// 🔐 Secure way: Render ke Environment Variables se key automatically read hogi
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const app = express();
 const server = http.createServer(app);
@@ -13,46 +17,12 @@ app.use(express.static('public'));
 let waitingUsers = [];
 let totalOnlineCount = 0;
 
-// Dynamic Data Pools
 const botNames = ["Priya", "Anjali", "Sneha", "Riya", "Kriti", "Simran", "Tanya", "Neha", "Divya", "Palak"];
 const botLocations = ["Delhi", "Lucknow", "Mumbai", "Chandigarh", "Jaipur", "Pune", "Kolkata", "Indore", "Noida", "Patna"];
 const botAvatars = [
     "https://cdn-icons-png.flaticon.com/512/6997/6997662.png",
     "https://cdn-icons-png.flaticon.com/512/4140/4140047.png",
     "https://cdn-icons-png.flaticon.com/512/4140/4140048.png"
-];
-
-// STEP BY STEP RANDOM DIALOGUE POOLS
-const step0Replies = ["Hey! Kaise ho? 😊", "Hello, kya chal raha hai?", "Hi, kisse baat ho rahi hai? 👀", "Heyy, kaise ho aap?"];
-const step1Replies = (name) => [`Mera naam ${name} hai. Aapka naam kya hai?`, `I am ${name}. Waise aapka naam kya hai?`, `Mujhe ${name} bolte hain. Aapka naam?`];
-const step2Replies = (loc) => [`Main ${loc} se hu, aap kahan se ho?`, `Btw main ${loc} se hu, aap kahan rehte ho?`, `Waise main ${loc} se belong karti hu, aap kahan se ho?`];
-
-const step3Replies = [
-    "Bas abhi thoda bored ho rahi thi toh socha kisi se baat kar lu. Aap kya karte ho?",
-    "Kuch nahi yaar, bas aise hi scroll kar rahi thi fir ye site mil gayi. Aap kya karte ho waise?",
-    "Main toh bas gaane sun rahi thi aur bohot boring lag raha tha din aaj ka. Aap batao, study ya job?",
-    "Ghar pe akele baithi thi toh timepass ke liye try kiya ye. Aap kya karte ho?"
-];
-
-const step4Replies = [
-    "Achaa sahi hai! Waise is website par kaafi acche log mil rahe hain aaj kal haha. 🙈",
-    "Oh wow, cool! Mujhe laga yahan sab ajeeb log honge par aap sahi lag rahe ho.",
-    "Nice! Chalo koi toh mila yahan normal dhang se baat karne wala.",
-    "Great! Aur batao mood kaisa hai aaj aapka?"
-];
-
-const step5Replies = [
-    "Aur batao, life me kya chal raha hai aapki?",
-    "Kuch naya sunao, aaj ka din kaisa raha aapka?",
-    "Waise yahan log bohot jaldi skip marte hain na? Hahaha.",
-    "Btw aap yahan roz aate ho kya baat karne?"
-];
-
-const step6Replies = [
-    "Achha suno, mujhe thoda kaam aa gaya hai mom bula rahi hain, baad me baat karte hain? Bye! ❤️",
-    "Yaar phone ki battery 2% bachi hai, switch off hone wala hai. Chalti hu, bye! 🔋✨",
-    "Arey exams chal rahe hain toh thoda padhne jana hai abhi, bye bye tc!",
-    "Bestie ka call aa raha hai baar baar, uthana padega. Nice chatting with you, bye! 👋"
 ];
 
 io.on('connection', (socket) => {
@@ -67,20 +37,11 @@ io.on('connection', (socket) => {
         socket.profilePic = data.profilePic || ""; 
         
         socket.isBotConnected = false;
-        socket.botStep = 0;
-        
-        // Dynamic assignment for this specific bot session
+        socket.chatHistory = [];
+
         socket.botName = botNames[Math.floor(Math.random() * botNames.length)];
         socket.botLocation = botLocations[Math.floor(Math.random() * botLocations.length)];
-        
-        // Randomly pick unique sentence variants for this session
-        socket.chosenStep0 = step0Replies[Math.floor(Math.random() * step0Replies.length)];
-        socket.chosenStep1 = step1Replies(socket.botName)[Math.floor(Math.random() * step1Replies(socket.botName).length)];
-        socket.chosenStep2 = step2Replies(socket.botLocation)[Math.floor(Math.random() * step2Replies(socket.botLocation).length)];
-        socket.chosenStep3 = step3Replies[Math.floor(Math.random() * step3Replies.length)];
-        socket.chosenStep4 = step4Replies[Math.floor(Math.random() * step4Replies.length)];
-        socket.chosenStep5 = step5Replies[Math.floor(Math.random() * step5Replies.length)];
-        socket.chosenStep6 = step6Replies[Math.floor(Math.random() * step6Replies.length)];
+        socket.botAge = Math.floor(Math.random() * (24 - 19 + 1)) + 19;
 
         let match = waitingUsers.find(user => user.id !== socket.id);
 
@@ -89,44 +50,34 @@ io.on('connection', (socket) => {
             socket.partner = match;
             match.partner = socket;
 
-            socket.emit('match_found', {
-                name: match.profileName,
-                age: match.profileAge,
-                pic: match.profilePic,
-                gender: match.myGender
-            });
-
-            match.emit('match_found', {
-                name: socket.profileName,
-                age: socket.profileAge,
-                pic: socket.profilePic,
-                gender: socket.myGender
-            });
+            socket.emit('match_found', { name: match.profileName, age: match.profileAge, pic: match.profilePic, gender: match.myGender });
+            match.emit('match_found', { name: socket.profileName, age: socket.profileAge, pic: socket.profilePic, gender: socket.myGender });
         } else {
             waitingUsers.push(socket);
 
             socket.botTimeout = setTimeout(() => {
                 if (waitingUsers.includes(socket) && !socket.partner) {
                     waitingUsers = waitingUsers.filter(user => user.id !== socket.id);
-                    
                     socket.isBotConnected = true;
+                    
                     const randomPic = botAvatars[Math.floor(Math.random() * botAvatars.length)];
-                    const randomAge = Math.floor(Math.random() * (24 - 19 + 1)) + 19;
 
                     socket.emit('match_found', {
                         name: socket.botName,
-                        age: randomAge,
+                        age: socket.botAge,
                         pic: randomPic,
                         gender: 'female'
                     });
 
-                    // Pehla message thoda random gap ke baad jayega (3 to 6 seconds)
-                    const initialDelay = 3000 + Math.random() * 3000;
-                    setTimeout(() => {
-                        if (socket.isBotConnected) {
-                            sendBotMessage(socket, "");
-                        }
-                    }, initialDelay + 1500); // UI open delay adjusted
+                    const botStartsFirst = Math.random() < 0.5;
+                    if (botStartsFirst) {
+                        const initialDelay = 5000 + Math.floor(Math.random() * 3000); 
+                        setTimeout(() => {
+                            if (socket.isBotConnected) {
+                                sendAiMessage(socket, "__START_CHAT__");
+                            }
+                        }, initialDelay);
+                    }
                 }
             }, 3000); 
         }
@@ -136,31 +87,25 @@ io.on('connection', (socket) => {
         if (socket.partner) {
             socket.partner.emit('receive_message', msg);
         } else if (socket.isBotConnected) {
-            // DYNAMIC DELAY GENERATOR (2000ms se 10000ms tak - Yani 2 se 10 second ke beech random)
-            const randomTypingDelay = 1500 + Math.random() * 2000; // Kab tak user ko wait karana shuru karna h
-            const totalReplyDelay = 2000 + Math.floor(Math.random() * 8000); // Total wait time (2 to 10 sec)
+            const minDelay = 5000; 
+            const extraRandomDelay = Math.floor(Math.random() * 4000); 
+            const totalDelay = minDelay + extraRandomDelay;
 
-            // Thodi der baad bot pehle "Typing..." status dikhayega
             setTimeout(() => {
-                if (socket.isBotConnected) {
-                    socket.emit('partner_typing', true);
-                }
-            }, randomTypingDelay);
+                if (socket.isBotConnected) socket.emit('partner_typing', true);
+            }, 1200);
             
-            // Aur total random duration bitne par reply send karega aur typing band karega
             setTimeout(() => {
                 if (socket.isBotConnected) {
                     socket.emit('partner_typing', false);
-                    sendBotMessage(socket, msg.toLowerCase());
+                    sendAiMessage(socket, msg);
                 }
-            }, totalReplyDelay);
+            }, totalDelay);
         }
     });
 
     socket.on('typing', (isTyping) => {
-        if (socket.partner) {
-            socket.partner.emit('partner_typing', isTyping);
-        }
+        if (socket.partner) socket.partner.emit('partner_typing', isTyping);
     });
 
     socket.on('leave_chat', () => {
@@ -177,43 +122,55 @@ io.on('connection', (socket) => {
     });
 });
 
-function sendBotMessage(socket, userText) {
+async function sendAiMessage(socket, userText) {
     if (!socket.isBotConnected) return;
 
-    // Instagram Handler (Dynamic & Strict attitude)
-    if (userText.includes("insta") || userText.includes("instagram") || userText.includes("id") || userText.includes("handle")) {
-        const instaReplies = [
-            "Nahi dungi, mujhe stranger logo pe jaldi bharosa nahi hota. 🤫",
-            "Arey pehle thodi baat toh karlo, itni jaldi insta kon deta hai? 😂",
-            "Insta public nahi karti main jaldi kisi stranger ke sath, sorry."
-        ];
-        socket.emit('receive_message', instaReplies[Math.floor(Math.random() * instaReplies.length)]);
-        return; 
+    const systemInstruction = `
+    You are a real 21-year-old Indian girl named "${socket.botName}" from "${socket.botLocation}". 
+    You are currently chatting with a random user on an anonymous text chat website.
+    
+    RULES YOU MUST FOLLOW:
+    1. Reply ONLY in short, dynamic, natural Hindi or Hinglish (e.g., "Hey, kaise ho?", "Main badhiya, aap batao?", "Arey sahi me? Ekdam mast"). Do NOT use bookish or robotic Hindi. Talk exactly like a typical Indian girl on WhatsApp or Instagram DMs. Use occasional emojis.
+    2. Keep your answers short (1 or 2 sentences max). Do not explain too much or write paragraphs.
+    3. MATCH THE CONTEXT: If the user says they are from your city or same location, act surprised and naturally ask where exactly or tell them you live in the main town area. Respond logically based on what they say.
+    4. ATTITUDE TO STRANGERS: If the user asks for your Instagram ID, handle, Snapchat, phone number, or social media, politely but strictly refuse (e.g., "Nahi yaar, main strangers ko insta id nahi deti", "Mujhe anjaan logo pe jaldi trust nahi hota sorry").
+    5. CLOSING LEAVE EXCUSE: After around 6 to 8 message exchanges, randomly bring up a believable excuse to drop out (e.g., phone switch off ho raha hai, mummy ka call aa raha hai, study karni hai) and say bye.
+    `;
+
+    try {
+        if (userText !== "__START_CHAT__") {
+            socket.chatHistory.push({ role: 'user', parts: [{ text: userText }] });
+        } else {
+            userText = "Initiate the chat with a short, friendly greeting in Hinglish like a regular Indian girl.";
+        }
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: socket.chatHistory.concat([{ role: 'user', parts: [{ text: userText }] }]),
+            config: {
+                systemInstruction: systemInstruction,
+                maxOutputTokens: 70,
+                temperature: 0.75
+            }
+        });
+
+        let aiReply = response.text.trim();
+        socket.chatHistory.push({ role: 'model', parts: [{ text: aiReply }] });
+        socket.emit('receive_message', aiReply);
+
+        if (aiReply.toLowerCase().includes("bye") || aiReply.toLowerCase().includes("chalti hu") || aiReply.toLowerCase().includes("tata")) {
+            setTimeout(() => {
+                if (socket.isBotConnected) {
+                    socket.emit('partner_disconnected');
+                    socket.isBotConnected = false;
+                }
+            }, 3000);
+        }
+
+    } catch (error) {
+        console.error("Gemini Engine Error:", error);
+        socket.emit('receive_message', "Hmm... achha aur batao?");
     }
-
-    const botConversations = [
-        socket.chosenStep0,
-        socket.chosenStep1,
-        socket.chosenStep2,
-        socket.chosenStep3,
-        socket.chosenStep4,
-        socket.chosenStep5,
-        socket.chosenStep6
-    ];
-
-    const currentStep = socket.botStep;
-    if (currentStep < botConversations.length) {
-        const botMsg = botConversations[currentStep];
-        socket.emit('receive_message', botMsg);
-        socket.botStep++;
-    } else {
-        socket.emit('partner_disconnected');
-        socket.isBotConnected = false;
-    }
-}
-
-function deletePendingBotTimers(socket) {
-    // Clean ups if necessary
 }
 
 function disconnectPartner(socket) {
