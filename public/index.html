@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Chat With Girls - FREE & ANONYMOUS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --bg-card: #141417;
+            --primary-gradient: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+            --vip-gradient: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+            --text-main: #ffffff;
+            --text-muted: #94a3b8;
+            --success-green: #22c55e;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; scroll-behavior: smooth; }
+        body { background-color: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+
+        .page-container { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        section { width: 100%; max-width: 1200px; min-height: 95vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; box-sizing: border-box; }
+
+        .live-badge { display: flex; align-items: center; gap: 8px; background: rgba(34, 197, 94, 0.1); color: var(--success-green); padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; margin-bottom: 20px; text-transform: uppercase;}
+        .live-dot { height: 10px; width: 10px; background-color: var(--success-green); border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite;}
+        
+        h1.main-title { font-size: 48px; font-weight: 700; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px;}
+        .sub-title { color: var(--text-muted); font-size: 18px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px;}
+        .description { max-width: 750px; text-align: center; color: var(--text-muted); line-height: 1.8; margin-bottom: 40px; font-size: 15px;}
+        .description strong { color: #facc15; font-weight: 400;}
+
+        .feature-tags, .pills-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 40px;}
+        .tag { background: rgba(168, 85, 247, 0.1); color: #c084fc; padding: 6px 14px; border-radius: 20px; font-size: 14px;}
+        .pill { background: #1e1e24; border: 1px solid #27272a; color: var(--text-muted); padding: 8px 18px; border-radius: 20px; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .pill:hover { border-color: #a855f7; color: white; }
+
+        .action-btn { background: var(--primary-gradient); color: white; border: none; padding: 16px 40px; border-radius: 30px; font-size: 18px; font-weight: 600; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; display: inline-flex; align-items: center; gap: 10px; text-decoration: none;}
+        .action-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(236, 72, 153, 0.3);}
+        .card-btn { background: #27272a; border: 1px solid #3f3f46; color: white; width: 100%; padding: 12px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: auto;}
+        .card-btn:hover { background: var(--primary-gradient); border-color: transparent; }
+
+        .grid-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; width: 100%; margin-top: 20px; }
+        .stat-card { background: var(--bg-card); border: 1px solid #27272a; border-radius: 16px; padding: 30px; text-align: center; min-width: 220px; flex: 1; max-width: 280px;}
+        .stat-icon { font-size: 32px; color: #a855f7; margin-bottom: 15px;}
+        .stat-value { font-size: 36px; font-weight: 700;}
+        .stat-label { color: var(--text-muted); text-transform: uppercase; font-size: 12px; letter-spacing: 1px; margin-top: 5px;}
+
+        .room-card { background: var(--bg-card); border: 1px solid #27272a; border-radius: 20px; padding: 30px; text-align: left; width: 340px; display: flex; flex-direction: column; position: relative; transition: 0.3s; }
+        .room-card:hover { transform: translateY(-5px); border-color: #3f3f46; }
+        .card-badge { position: absolute; top: 20px; right: 20px; background: #a855f7; color: white; font-size: 10px; font-weight: bold; padding: 4px 10px; border-radius: 10px; text-transform: uppercase; }
+        .room-card h3 { font-size: 22px; margin-bottom: 12px; font-weight: 600; }
+        .room-card p { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+        .room-card .online-count { font-size: 13px; color: var(--success-green); display: flex; align-items: center; gap: 6px; margin-bottom: 15px; }
+
+        .trust-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 40px; margin: 40px 0; background: #111115; padding: 25px; border-radius: 15px; border: 1px solid #27272a; width: 100%; max-width: 900px;}
+        .trust-item { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 14px; text-align: left; }
+        .trust-item strong { color: white; display: block; }
+
+        .input-group { text-align: left; margin-bottom: 15px; width: 100%; }
+        .input-group label { color: var(--text-muted); display: block; margin-bottom: 6px; font-size: 14px; }
+        .input-group input, .input-group select { width: 100%; background: var(--bg-dark); color: white; border: 1px solid #27272a; padding: 12px; border-radius: 8px; font-size: 15px; outline: none; }
+        
+        .avatar-upload { position: relative; max-width: 90px; margin: 0 auto 15px auto; }
+        .avatar-preview { width: 90px; height: 90px; position: relative; border-radius: 50%; border: 2px dashed #a855f7; background: #1e1e24; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        .avatar-preview img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .avatar-upload input { display: none; }
+        .avatar-upload label { display: block; width: 100%; height: 100%; cursor: pointer; line-height: 90px; color: var(--text-muted); font-size: 12px; text-align: center; position: absolute; top:0; left:0;}
+
+        .setup-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); justify-content: center; align-items: center; z-index: 1000;}
+        .modal-content { background: var(--bg-card); border: 1px solid #27272a; border-radius: 20px; padding: 35px; width: 90%; max-width: 400px; text-align: center; position: relative;}
+        .close-modal { position: absolute; top: 15px; right: 20px; color: var(--text-muted); cursor: pointer; font-size: 20px;}
+
+        .app-container { display: none; width: 100%; max-width: 450px; height: 85vh; background: var(--bg-card); border: 1px solid #27272a; border-radius: 20px; flex-direction: column; padding: 20px; margin-top: 5vh; position: fixed; z-index: 2000; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        
+        .match-profile-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; animation: pop 0.4s ease; }
+        .match-avatar { width: 140px; height: 140px; border-radius: 50%; border: 4px solid #ec4899; object-fit: cover; box-shadow: 0 0 20px rgba(236,72,153,0.5); margin-bottom: 20px; }
+        .match-name { font-size: 26px; font-weight: 700; color: white; }
+        .match-age { background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 12px; font-size: 14px; margin-top: 5px; display: inline-block; }
+
+        .chat-header { border-bottom: 1px solid #27272a; padding-bottom: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;}
+        .chat-box { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;}
+        .msg { padding: 10px 15px; border-radius: 12px; max-width: 75%; animation: pop 0.2s ease; line-height: 1.5; font-size: 15px;}
+        .me { background: var(--primary-gradient); align-self: flex-end;}
+        .partner { background: #27272a; align-self: flex-start;}
+        .input-area { display: flex; gap: 8px;}
+        .input-area input { flex: 1; background: var(--bg-dark); border: 1px solid #27272a; color: white; padding: 12px; border-radius: 8px; outline: none;}
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+        @keyframes pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div id="websiteContent" class="page-container">
+        
+        <!-- PAGE 1: HERO HOME -->
+        <section id="home">
+            <div class="live-badge"><span class="live-dot"></span> LIVE NOW</div>
+            <h1 class="main-title">Online Chat With Girls</h1>
+            <div class="sub-title">FREE & ANONYMOUS</div>
+            <div class="feature-tags">
+                <span class="tag">Single Girl Chat</span>
+                <span class="tag">Random Chat</span>
+                <span class="tag">Text Online</span>
+            </div>
+            <p class="description">
+                Discover the best <strong>free chat with girl</strong> platforms where you can enjoy <strong>online chat with girls</strong> instantly. Experienced random chat with girls across USA, UK, UAE, India, Pakistan and 35+ countries — completely <strong>online chat free</strong>, no registration required.
+            </p>
+            <div class="grid-container" style="max-width: 900px; margin-bottom: 40px;">
+                <!-- Id dynamically updates from socket -->
+                <div class="stat-card"><div class="stat-icon">👥</div><div id="liveCounterBox" class="stat-value">1+</div><div class="stat-label">ONLINE NOW</div></div>
+                <div class="stat-card"><div class="stat-icon">🌐</div><div class="stat-value">42+</div><div class="stat-label">COUNTRIES</div></div>
+                <div class="stat-card"><div class="stat-icon">🛡️</div><div class="stat-value">156+</div><div class="stat-label">MODERATORS</div></div>
+            </div>
+            <button class="action-btn" onclick="openGenderSetup()">Start Girls Chat →</button>
+        </section>
+
+        <!-- PAGE 2: GIRLS CHAT ROOMS -->
+        <section id="chatRooms" style="background: #0d0d11;">
+            <h1 class="main-title" style="font-size: 40px;">Girls Chat Rooms</h1>
+            <div class="sub-title" style="font-size: 16px;">Connect. Share. Belong.</div>
+            <p class="description">
+                Join the most welcoming <strong>girls chat community</strong> online. Whether you're looking for <strong>single girl chat, video calls</strong>, or <strong>group conversations</strong>, find your perfect space here. No signup, completely free, totally safe.
+            </p>
+            
+            <div class="grid-container">
+                <div class="room-card">
+                    <div style="font-size: 30px; margin-bottom: 15px;">💃</div>
+                    <h3>Single Girls Chat</h3>
+                    <p>Meet single women looking for genuine connections. Private one-on-one conversations in a safe, moderated environment. Perfect for single girl chat and meaningful friendships.</p>
+                    <div class="online-count"><span class="live-dot"></span> <span id="roomCount1">1</span> online &nbsp;<span style="color:#6b7280; font-size:11px; background:#1e1e24; padding:2px 6px; border-radius:4px;">Private</span></div>
+                    <button class="card-btn" onclick="openGenderSetup()">Start Chatting</button>
+                </div>
+                <div class="room-card">
+                    <div class="card-badge">POPULAR</div>
+                    <div style="font-size: 30px; margin-bottom: 15px;">📹</div>
+                    <h3>Video Call Chat</h3>
+                    <p>Face-to-face conversations with beautiful girls worldwide. HD quality video with real-time translation. Experience single girl chat video call like never before.</p>
+                    <div class="online-count"><span class="live-dot"></span> <span id="roomCount2">1</span> online &nbsp;<span style="color:#6b7280; font-size:11px; background:#1e1e24; padding:2px 6px; border-radius:4px;">HD Video</span></div>
+                    <button class="card-btn" onclick="openGenderSetup()">Start Video</button>
+                </div>
+                <div class="room-card">
+                    <div style="font-size: 30px; margin-bottom: 15px;">💬</div>
+                    <h3>Text Chat Only</h3>
+                    <p>Prefer typing? Join text-based rooms for chat with girl text online. Anonymous, secure, and perfect for shy personalities. Express yourself freely without camera pressure.</p>
+                    <div class="online-count"><span class="live-dot"></span> <span id="roomCount3">1</span> online &nbsp;<span style="color:#6b7280; font-size:11px; background:#1e1e24; padding:2px 6px; border-radius:4px;">Anonymous</span></div>
+                    <button class="card-btn" onclick="openGenderSetup()">Start Texting</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE 3: LIFESTYLE HUB -->
+        <section id="lifestyle">
+            <div class="live-badge" style="background: rgba(236, 72, 153, 0.1); color: #ec4899;"><span class="live-dot" style="background:#ec4899"></span> GIRLS ONLINE NOW</div>
+            <h1 class="main-title" style="font-size: 40px;">Girls Chat & Lifestyle Hub</h1>
+            <div class="sub-title" style="font-size: 16px;">Connect • Share • Grow Together</div>
+            <p class="description">
+                Welcome to the ultimate <strong>girls-only community</strong> where you can <strong>chat with female friends</strong>, discuss <strong>beauty tips</strong>, share <strong>relationship advice</strong>, explore <strong>fashion trends</strong>, and get <strong>study help</strong>. Find your tribe here. Anonymous chat for girls with no registration required.
+            </p>
+            
+            <div class="pills-container">
+                <span class="pill" onclick="openGenderSetup()">Girl Talk</span>
+                <span class="pill" onclick="openGenderSetup()">Beauty Secrets</span>
+                <span class="pill" onclick="openGenderSetup()">Dating Tips</span>
+                <span class="pill" onclick="openGenderSetup()">Mental Health</span>
+                <span class="pill" onclick="openGenderSetup()">Career Advice</span>
+                <span class="pill" onclick="openGenderSetup()">Fitness Goals</span>
+            </div>
+
+            <div class="trust-container">
+                <div class="trust-item">🔒 <div><strong>100% Private</strong> Anonymous chatting</div></div>
+                <div class="trust-item">👥 <div><strong>Verified Girls</strong> Real female users only</div></div>
+                <div class="trust-item">⚡ <div><strong>Instant Access</strong> No signup required</div></div>
+                <div class="trust-item">🛡️ <div><strong>24/7 Moderated</strong> Safe environment</div></div>
+            </div>
+
+            <h2 style="font-size: 28px; margin-bottom: 10px;">Find Your Perfect Chat Room</h2>
+            <p class="description" style="margin-bottom: 30px;">Join thousands of girls discussing what matters to you</p>
+            
+            <button class="action-btn" style="background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%); padding: 18px 50px;" onclick="openGenderSetup()">Enter Girls Chat Now →</button>
+        </section>
+    </div>
+
+    <!-- ================= PROFILE SETUP MODAL ================= -->
+    <div id="setupModal" class="setup-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('setupModal')">×</span>
+            <h2 style="margin-bottom: 20px;">Create Profile</h2>
+            
+            <div class="avatar-upload">
+                <label id="uploadLabel" for="imageInput">Upload Pic</label>
+                <div class="avatar-preview" id="avatarPreview">
+                    <img id="previewImg" src="" alt="Preview">
+                </div>
+                <input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)">
+            </div>
+
+            <div class="input-group">
+                <label>Your Nickname</label>
+                <input type="text" id="profileName" placeholder="e.g. Rahul, Priya">
+            </div>
+
+            <div class="input-group">
+                <label>Your Age</label>
+                <input type="number" id="profileAge" placeholder="e.g. 21" min="18" max="100">
+            </div>
+
+            <div class="input-group">
+                <label>Your Gender</label>
+                <select id="myGender"><option value="male">Male 👨</option><option value="female">Female 👩</option></select>
+            </div>
+
+            <div class="input-group">
+                <label>Connect with?</label>
+                <select id="targetGender">
+                    <option value="random">Random 🤝 (FREE)</option>
+                    <option value="female">Females Only 👩 (VIP)</option>
+                </select>
+            </div>
+
+            <button class="action-btn" style="width: 100%; justify-content: center; margin-top: 10px;" onclick="startMatch()">Find Match</button>
+        </div>
+    </div>
+
+    <!-- ================= SEARCHING OVERLAY ================= -->
+    <div id="loadingScreen" class="app-container" style="justify-content: center; align-items: center; border:none; background:rgba(20,20,23,0.98);">
+        <h2>Searching Partner...</h2>
+        <p style="color: var(--text-muted); margin-top: 10px; animation: pulse 1s infinite;">🔄 Connecting to global rooms</p>
+        <button class="card-btn" style="max-width:200px; margin-top:30px; background:#ef4444;" onclick="cancelSearch()">Cancel</button>
+    </div>
+
+    <!-- ================= PROFILE MATCH VIEW ================= -->
+    <div id="matchProfileScreen" class="app-container" style="justify-content: center; background: #141417;">
+        <div class="match-profile-view">
+            <h2 style="color: #22c55e; margin-bottom: 10px; font-size: 28px;">🔥 It's a Match!</h2>
+            <img id="matchPic" class="match-avatar" src="" alt="Partner">
+            <div id="matchName" class="match-name">Priya</div>
+            <div id="matchAge" class="match-age">Age: 22</div>
+            <p style="color: var(--text-muted); margin-top: 25px; font-size: 13px;">Opening chat box in 3 seconds...</p>
+        </div>
+    </div>
+
+    <!-- ================= CHAT BOX SCREEN ================= -->
+    <div id="chatScreen" class="app-container">
+        <div class="chat-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img id="chatHeaderPic" src="" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; background: #333;">
+                <h3 id="chatHeaderTitle">Stranger</h3>
+            </div>
+            <button style="background:#ef4444; border:none; color:white; padding: 6px 12px; border-radius: 6px; cursor:pointer;" onclick="next()">Next →</button>
+        </div>
+        <div class="chat-box" id="box"></div>
+        <div class="input-area">
+            <input type="text" id="inp" placeholder="Type a message..." onkeypress="if(event.key==='Enter') send()">
+            <button style="background:var(--primary-gradient); border:none; color:white; padding: 0 20px; border-radius: 8px; cursor:pointer;" onclick="send()">Send</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let base64Image = ""; 
+
+        const websiteContent = document.getElementById('websiteContent');
+        const setupModal = document.getElementById('setupModal');
+        const loadingScreen = document.getElementById('loadingScreen');
+        const matchProfileScreen = document.getElementById('matchProfileScreen');
+        const chatScreen = document.getElementById('chatScreen');
+        const box = document.getElementById('box');
+        const inp = document.getElementById('inp');
+
+        function openGenderSetup() { setupModal.style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // Live Real-Time Counter Update Logic
+        socket.on('update_online_count', (count) => {
+            // Agar website public hai toh base counter thoda heavy dikhane ke liye real count + static badha sakte hain
+            const displayCount = count + 1420; 
+            document.getElementById('liveCounterBox').innerText = displayCount + "+";
+            document.getElementById('roomCount1').innerText = Math.floor(displayCount * 0.4);
+            document.getElementById('roomCount2').innerText = Math.floor(displayCount * 0.3);
+            document.getElementById('roomCount3').innerText = Math.floor(displayCount * 0.3);
+        });
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    base64Image = e.target.result; 
+                    document.getElementById('previewImg').src = base64Image;
+                    document.getElementById('previewImg').style.display = 'block';
+                    document.getElementById('uploadLabel').style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function startMatch() {
+            const profileName = document.getElementById('profileName').value.trim();
+            const profileAge = document.getElementById('profileAge').value.trim();
+            const targetGender = document.getElementById('targetGender').value;
+
+            if(!profileName || !profileAge) {
+                alert("Please fill your Name and Age to continue!");
+                return;
+            }
+
+            // VIP Trigger Notification
+            if(targetGender === 'female') {
+                alert("⭐ VIP Feature: 'Females Only' filter is premium. Connecting you via standard high-priority server room right now!");
+            }
+
+            setupModal.style.display = 'none';
+            websiteContent.style.filter = 'blur(12px)';
+            loadingScreen.style.display = 'flex';
+
+            const myGender = document.getElementById('myGender').value;
+
+            socket.emit('find_match', { 
+                myGender, 
+                targetGender: 'random', // Abhi back-end crash na ho isliye standard handle kar rahe hain
+                profileName, 
+                profileAge, 
+                profilePic: base64Image 
+            });
+        }
+
+        socket.on('match_found', (partnerData) => {
+            loadingScreen.style.display = 'none';
+            
+            document.getElementById('matchName').innerText = partnerData.name;
+            document.getElementById('matchAge').innerText = "Age: " + partnerData.age;
+            
+            const defaultAvatar = partnerData.gender === 'female' 
+                ? 'https://cdn-icons-png.flaticon.com/512/6997/6997662.png' 
+                : 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                
+            document.getElementById('matchPic').src = partnerData.pic || defaultAvatar;
+            document.getElementById('chatHeaderTitle').innerText = `${partnerData.name} (${partnerData.age})`;
+            document.getElementById('chatHeaderPic').src = partnerData.pic || defaultAvatar;
+
+            matchProfileScreen.style.display = 'flex';
+
+            setTimeout(() => {
+                matchProfileScreen.style.display = 'none';
+                chatScreen.style.display = 'flex';
+                box.innerHTML = `<p style="text-align:center; color: var(--text-muted);">You matched with ${partnerData.name}. Say Hi!</p>`;
+            }, 3000);
+        });
+
+        function send() {
+            if(!inp.value.trim()) return;
+            box.innerHTML += `<div class="msg me">${inp.value}</div>`;
+            socket.emit('send_message', inp.value);
+            inp.value = '';
+            box.scrollTop = box.scrollHeight;
+        }
+
+        socket.on('receive_message', (msg) => {
+            box.innerHTML += `<div class="msg partner">${msg}</div>`;
+            box.scrollTop = box.scrollHeight;
+        });
+
+        socket.on('partner_disconnected', () => {
+            box.innerHTML += '<p style="text-align:center; color:#ef4444; margin-top: 10px;">Partner left the chat room.</p>';
+        });
+
+        function next() {
+            chatScreen.style.display = 'none';
+            loadingScreen.style.display = 'flex';
+            socket.emit('leave_chat');
+            
+            const myGender = document.getElementById('myGender').value;
+            const profileName = document.getElementById('profileName').value;
+            const profileAge = document.getElementById('profileAge').value;
+
+            socket.emit('find_match', { myGender, targetGender: 'random', profileName, profileAge, profilePic: base64Image });
+        }
+
+        function cancelSearch() {
+            socket.emit('leave_chat');
+            loadingScreen.style.display = 'none';
+            websiteContent.style.filter = 'none';
+        }
+    </script>
+</body>
+</html>
